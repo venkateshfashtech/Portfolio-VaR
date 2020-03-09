@@ -1,0 +1,43 @@
+import pandas as pd, os, pandas_datareader.data as web,datetime as dt,numpy as np
+
+os.chdir("C:\Python\Portfolio VaR")
+start = dt.datetime(2010, 6, 30)
+end = dt.datetime(2018, 10, 31)
+stock_list=['TSLA','WMT','AMZN','AAPL','MNST']
+
+Port_Val = float(0.00)
+Hist_VaR = float(0.00)
+Tail_VaR = float(0.00)
+std_dev  =[]
+Par_VaR  = float(0.00)
+wght = np.array([0.2,0.2,0.2,0.2,0.2])
+Port_rtrns = pd.DataFrame()
+
+
+for i,j in zip(stock_list,[0,1,2,3,4]):
+    df=web.DataReader(i, 'yahoo', start, end)
+    df['percent change'] = df['Adj Close'].pct_change()*100
+    dropped_na = df.dropna()
+    Port_rtrns[i] = df['percent change']
+    sorted_df = dropped_na.sort_values(by=['percent change'], ascending=True, na_position='first')
+    row_count = len(df['percent change'])
+    position = int((5*row_count/100)+1)
+    pnl_percent = sorted_df.iloc[position, 6]
+    Hist_VaR += float((df.loc['2018-10-31']['Adj Close']) * pnl_percent/100)
+    std_dev.append(float(sorted_df['percent change'].std()))
+    Par_VaR += float(std_dev[j]*(df.loc['2018-10-31']['Adj Close'])*1.960/100*-1)
+    Port_Val += float(df.loc['2018-10-31']['Adj Close'])
+Port_Variance = np.dot(wght.T,np.dot(Port_rtrns.cov(),wght))
+Port_varaince_a = Port_Variance*np.sqrt(250)
+Port_Std_a = Port_varaince_a ** 0.5
+
+print("Portfolio Value: $"+ str(Port_Val))
+print("Portfolio 1 Day Historical VaR @ 95%: $"+ str(Hist_VaR))    
+print("Portfolio 1 Day Parametric VaR @ 95%: $"+ str(Par_VaR))
+print("Portfolio 1 Day Tail Risk @ 95%: $"+ str(Tail_VaR))
+print("Portfolio Annualized Variance in %: "+ str(Port_varaince_a))
+print("Portfolio Annualized Std Dev in %: "+ str(Port_Std_a))    
+
+# reduce decimal point
+#check whether it has to be multiplied with port wght
+#Conditional VaR
